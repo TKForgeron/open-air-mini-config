@@ -1,0 +1,1 @@
+https://github.com/Flamingo-tech/Open-AIR/tree/main/Open%20AIR%20Mini
