@@ -1,0 +1,10 @@
+[project]
+name = "open-air-mini"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "esphome>=2025.10.3",
+    "pip>=25.3",
+]
