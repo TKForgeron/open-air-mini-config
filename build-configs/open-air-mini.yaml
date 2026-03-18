@@ -1,11 +1,9 @@
 esphome:
   name: open-air-mini
-  friendly_name: Ventilatiebox
+  friendly_name: "Open Air Mini"
 
-esp32:
-  board: esp32dev
-  framework:
-    type: esp-idf
+esp32: 
+  variant: esp32
 
 # Enable logging
 logger:
@@ -17,11 +15,11 @@ web_server:
 
 # Enable Home Assistant API
 api:
+  port: 6053
 
-ota:
-  - platform: esphome
-    password: "9f2ab9aa715f573e2476e75a5ec7f4e7"
-
+# ota:
+#   - platform: esphome
+#   password: "9f2ab9aa715f573e2476e75a5ec7f4e7"
 
 wifi:
   ssid: !secret wifi_ssid
@@ -35,29 +33,29 @@ wifi:
 captive_portal:
 
 globals:
-  # Disconnected Mode Max Fan Speed, linked to Disconnected Hum Level Max Speed
+  # Max fan speed, when in disconnected mode (linked to disconnected_hum_level_max_speed).
   - id: disconnected_max_fan_speed
     type: int
     restore_value: no
-    initial_value: "100"
-  # Disconnected Mode Medium Fan Speed, linked to Disconnected Hum Level Medium Speed
+    initial_value: "90"
+  # Medium fan speed, when in disconnected mode (linked to disconnected_hum_level_medium_speed).
   - id: disconnected_medium_fan_speed
     type: int
     restore_value: no
-    initial_value: "60"
-  # Disconnected Mode Default Fan Speed, for humidities lower than Disconnected Hum Level Medium Speed
-  # or if NOT using a humidity sensor. Without sensor this speed will be maintained untill a connection
-  # to Home Assistant has been restored and your automations can take over.
+    initial_value: "45"
+  # Default (fallback) fan speed, for:
+    # if humidity is lower than disconnected_hum_level_medium_speed, or
+    # if not connected to a humidity sensor
   - id: disconnected_default_fan_speed
     type: int
     restore_value: no
     initial_value: "25"
-  # Disconnected Mode Max Fan Speed Threshold
+  # Humidity threshold for enabling max fan speed, when in disconnected mode.
   - id: disconnected_hum_level_max_speed
     type: int
     restore_value: no
     initial_value: "75"
-  # Disconnected Mode Medium Fan Speed Threshold
+  # Humidity threshold for enabling medium fan speed, when in disconnected mode.
   - id: disconnected_hum_level_medium_speed
     type: int
     restore_value: no
@@ -92,6 +90,7 @@ i2c:
 
 
 
+
 # Status led
 status_led:
   pin:
@@ -110,38 +109,7 @@ fan:
     name: "Open AIR Mini"
     id: fan_motor
 
-
 sensor:
-  - platform: scd4x
-    i2c_id: i2c_sensor_1
-    co2:
-      name: "Open AIR Mini Sensor Mini x CO2"
-      id: air_Co2
-      accuracy_decimals: 0
-    temperature:
-      name: "Open AIR Mini Sensor Mini x Temperature"
-      id: air_temperature
-      accuracy_decimals: 2
-    humidity:
-      name: "Open AIR Mini Sensor Mini x Humidity"
-      id: air_humidity
-      accuracy_decimals: 2
-    update_interval: 30s
-    measurement_mode: periodic
-
-  - platform: sgp4x
-    i2c_id: i2c_sensor_1
-    voc:
-      name: "Open AIR Mini x VOC Index "
-      id: air_VOC
-    nox:
-      name: "Open AIR Mini x NOx Index "
-      id: air_NOx
-    compensation:
-      temperature_source: air_temperature #Make sure to match these if you change ID's.
-      humidity_source: air_humidity       #Make sure to match these if you change ID's.
-    update_interval: 30s
-
   - platform: pulse_counter
     pin: GPIO14
     unit_of_measurement: 'RPM'
@@ -163,9 +131,53 @@ sensor:
     entity_category: "diagnostic"
     device_class: ""
 
+  - platform: scd4x
+    i2c_id: i2c_sensor_1
+    co2:
+      name: "Open AIR Mini Sensor Mini x CO2"
+      id: air_Co2
+      accuracy_decimals: 0
+    temperature:
+      name: "Open AIR Mini Sensor Mini x Temperature"
+      id: air_temperature
+      accuracy_decimals: 2
+    humidity:
+      name: "Open AIR Mini Sensor Mini x Humidity"
+      id: air_humidity
+      accuracy_decimals: 2
+    update_interval: 30s
+    measurement_mode: periodic
+
+  - platform: sgp4x
+    i2c_id: i2c_sensor_1 
+    voc:
+      name: "Open AIR Mini x VOC Index "
+      id: air_VOC
+    nox:
+      name: "Open AIR Mini x NOx Index "
+      id: air_NOx
+    compensation:
+      temperature_source: air_temperature #Make sure to match these if you change ID's.
+      humidity_source: air_humidity       #Make sure to match these if you change ID's.
+    update_interval: 30s
 
 script:
-  !include disconnected-mode-with-humidity.yaml
+  - id: disconnected_mode
+    mode: single
+    then:
+      - logger.log: "Disconnected Mode Triggered"
+      - fan.turn_on:
+          id: fan_motor
+          speed: !lambda |-
+            auto hum = id(air_humidity).state;
+            if (hum >= id(disconnected_hum_level_max_speed)) {
+              return id(disconnected_max_fan_speed);
+            } else if (hum >= id(disconnected_hum_level_medium_speed)) {
+              return id(disconnected_medium_fan_speed);
+            } else {
+              return id(disconnected_default_fan_speed);
+            }
+            return id(disconnected_default_fan_speed);
 
 interval:
   - interval: 30s
