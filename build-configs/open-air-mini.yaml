@@ -13,13 +13,13 @@ logger:
 web_server:
   port: 80
 
-# Enable Home Assistant API
+# Enable Home Assistant API on some port
 api:
   port: 6053
 
+# Custom OTA config, if commented out, resorts to defaults implemented by the platform (esphome) 
 # ota:
 #   - platform: esphome
-#   password: "9f2ab9aa715f573e2476e75a5ec7f4e7"
 
 wifi:
   ssid: !secret wifi_ssid
@@ -61,7 +61,8 @@ globals:
     restore_value: no
     initial_value: "55"
 
-# From V1.4.0 The Sensor pins on the Open AIR Mini are swapped. Correct example is below:
+# this should work for >v1.4.0
+# although not sure what is and is not used/necessary
 uart:
 #UART For Sensor 2
  - rx_pin: GPIO13
